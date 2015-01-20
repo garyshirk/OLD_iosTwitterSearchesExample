@@ -80,12 +80,80 @@ class MasterViewController: UITableViewController,
     
     // displays add/edit dialog
     func displayAddEditSearchAlert(# isNew: Bool, index: Int?) {
+        // create UIAlertController for user input
+        let alertController = UIAlertController(
+            title: isNew ? "Add Search" : "Edit Search",
+            message: isNew ? "" : "Modify your query",
+            preferredStyle: UIAlertControllerStyle.Alert)
         
+        // create UITextFields in which user can enter a new search
+        alertController.addTextFieldWithConfigurationHandler(
+            { (textField) -> Void in
+                if isNew {
+                    textField.placeholder = "Enter Twitter search query"
+                } else {
+                    textField.text = self.model.queryForTagAtIndex(index!)
+                }
+        })
+        
+        alertController.addTextFieldWithConfigurationHandler(
+            { (textField) -> Void in
+                if isNew {
+                    textField.placeholder = "Tag your query"
+                } else {
+                    textField.text = self.model.tagAtIndex(index!)
+                }
+                
+                textField.enabled = false
+                textField.textColor = UIColor.lightGrayColor()
+        })
+        
+        // create cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Cancel, handler: nil)
+        alertController.addAction(cancelAction)
+        
+        // create save action
+        let saveAction = UIAlertAction(title: "Save", style: UIAlertActionStyle.Default,
+            handler: {(action) in
+          
+                let query = (alertController.textFields?[0] as UITextField).text
+                
+                let tag = (alertController.textFields?[1] as UITextField).text
+                
+                // ensure query and tag are not empty
+                if !query.isEmpty && !tag.isEmpty {
+                    
+                    self.model.saveQuery(query, forTag: tag, syncToCloud: true)
+                }
+                
+                if isNew {
+                    
+                    let indexPath = NSIndexPath(forRow: 0, inSection: 0)
+                    self.tableView.insertRowsAtIndexPaths([indexPath], withRowAnimation: .Automatic)
+                }
+                
+        })
+        alertController.addAction(saveAction)
+        
+        presentViewController(alertController, animated: true, completion: nil)
     }
     
     // displays share sheet
     func shareSearch(index: Int) {
         
+        let message = "Check out the results of this Twitter search"
+        let urlString = twitterSearchURL + urlEncodeString(model.queryForTagAtIndex(index)!)
+        let itemsToShare = [message, urlString];
+        
+        // create UIActivityViewController so user can share search
+        let activityViewController = UIActivityViewController(activityItems: itemsToShare, applicationActivities: nil)
+        presentViewController(activityViewController, animated: true, completion: nil)
+    }
+    
+    // returns a URL encoded version of the query String
+    func urlEncodeString(string: String) -> String {
+        return string.stringByAddingPercentEncodingWithAllowedCharacters(
+            NSCharacterSet.URLQueryAllowedCharacterSet())!
     }
 
     override func didReceiveMemoryWarning() {
