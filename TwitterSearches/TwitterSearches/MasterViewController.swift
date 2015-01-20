@@ -1,18 +1,23 @@
-//
 //  MasterViewController.swift
 //  TwitterSearches
 //
-//  Created by Gary Shirk on 1/19/15.
-//  Copyright (c) 2015 garyshirk. All rights reserved.
-//
-
 import UIKit
 
-class MasterViewController: UITableViewController {
+class MasterViewController: UITableViewController,
+                            ModelDelegate, UIGestureRecognizerDelegate {
 
+    // detailviewcontroller contains webView to show search results
     var detailViewController: DetailViewController? = nil
+    let twitterSearchURL = "http://mobile.twitter.com/search/?q="
+    
+    var model: Model! = nil
+    
     var objects = NSMutableArray()
-
+    
+    // conform to ModelDelegate
+    func modelDataChanged() {
+        tableView.reloadData()
+    }
 
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -33,6 +38,54 @@ class MasterViewController: UITableViewController {
             let controllers = split.viewControllers
             self.detailViewController = controllers[controllers.count-1].topViewController as? DetailViewController
         }
+        
+        model = Model(delegate: self);
+        model.synchronize()
+    }
+    
+    // display UIAlertController to get new search from user
+    func addButtonPressed(sender: AnyObject) {
+        displayAddEditSearchAlert(isNew: true, index: nil)
+    }
+    
+    // handle long press for editing or sharing a search
+    func tableViewCellLongPressed(sender: UILongPressGestureRecognizer) {
+        
+        if sender.state == UIGestureRecognizerState.Began && !tableView.editing {
+            
+            let cell = sender.view as UITableViewCell
+            
+            if let indexPath = tableView.indexPathForCell(cell) {
+                displayLongPressOptions(indexPath.row)
+            }
+        }
+    }
+    
+    func displayLongPressOptions(row: Int) {
+        // create UIAlertController for user input
+        let alertController = UIAlertController(title: "Options", message: "Edit or Share you search", preferredStyle: UIAlertControllerStyle.Alert)
+        
+        // create cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Cancel, handler: nil)
+        alertController.addAction(cancelAction)
+        
+        let editAction = UIAlertAction(title: "Edit", style: UIAlertActionStyle.Default, handler: {(action) in  self.displayAddEditSearchAlert(isNew: false, index: row)})
+        alertController.addAction(editAction)
+        
+        let shareAction = UIAlertAction(title: "Share", style: UIAlertActionStyle.Default, handler: {(action) in self.shareSearch(row)})
+        alertController.addAction(shareAction)
+        
+        presentViewController(alertController, animated: true, completion: nil)
+    }
+    
+    // displays add/edit dialog
+    func displayAddEditSearchAlert(# isNew: Bool, index: Int?) {
+        
+    }
+    
+    // displays share sheet
+    func shareSearch(index: Int) {
+        
     }
 
     override func didReceiveMemoryWarning() {
