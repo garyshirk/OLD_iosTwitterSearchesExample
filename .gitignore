@@ -82,7 +82,8 @@ build/
 #     - unless they are "shared")
 #
 # NB: this is exclusive with OPTION 2 below
-xcuserdata
+#xcuserdata
+TwitterSearches/TwitterSearches.xcodeproj/project.xcworkspace/xcuserdata/gary.xcuserdatad/UserInterfaceState.xcuserstate
  
 # OPTION 2: ---------------------------------
 #     get rid of ALL personal settings, but KEEP SOME OF THEM
@@ -90,7 +91,7 @@ xcuserdata
 #
 # NB: this is exclusive with OPTION 1 above
 #
-xcuserdata/**/*
+#xcuserdata/**/*
  
 #     (requires option 2 above): Personal Schemes
 #
