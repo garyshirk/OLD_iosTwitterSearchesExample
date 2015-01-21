@@ -12,8 +12,6 @@ class MasterViewController: UITableViewController,
     
     var model: Model! = nil
     
-    var objects = NSMutableArray()
-    
     // conform to ModelDelegate
     func modelDataChanged() {
         tableView.reloadData()
@@ -32,7 +30,7 @@ class MasterViewController: UITableViewController,
         // Do any additional setup after loading the view, typically from a nib.
         self.navigationItem.leftBarButtonItem = self.editButtonItem()
 
-        let addButton = UIBarButtonItem(barButtonSystemItem: .Add, target: self, action: "insertNewObject:")
+        let addButton = UIBarButtonItem(barButtonSystemItem: .Add, target: self, action: "addButtonPressed:")
         self.navigationItem.rightBarButtonItem = addButton
         if let split = self.splitViewController {
             let controllers = split.viewControllers
@@ -88,7 +86,7 @@ class MasterViewController: UITableViewController,
         
         // create UITextFields in which user can enter a new search
         alertController.addTextFieldWithConfigurationHandler(
-            { (textField) -> Void in
+            {(textField) in
                 if isNew {
                     textField.placeholder = "Enter Twitter search query"
                 } else {
@@ -97,45 +95,46 @@ class MasterViewController: UITableViewController,
         })
         
         alertController.addTextFieldWithConfigurationHandler(
-            { (textField) -> Void in
+            {(textField) in
                 if isNew {
                     textField.placeholder = "Tag your query"
                 } else {
                     textField.text = self.model.tagAtIndex(index!)
+                    textField.enabled = false
+                    textField.textColor = UIColor.lightGrayColor()
                 }
-                
-                textField.enabled = false
-                textField.textColor = UIColor.lightGrayColor()
         })
         
-        // create cancel action
-        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Cancel, handler: nil)
+        // create Cancel action
+        let cancelAction = UIAlertAction(title: "Cancel",
+            style: UIAlertActionStyle.Cancel, handler: nil)
         alertController.addAction(cancelAction)
         
-        // create save action
-        let saveAction = UIAlertAction(title: "Save", style: UIAlertActionStyle.Default,
+        let saveAction = UIAlertAction(title: "Save",
+            style: UIAlertActionStyle.Default,
             handler: {(action) in
-          
-                let query = (alertController.textFields?[0] as UITextField).text
-                
-                let tag = (alertController.textFields?[1] as UITextField).text
+                let query =
+                (alertController.textFields?[0] as UITextField).text
+                let tag =
+                (alertController.textFields?[1] as UITextField).text
                 
                 // ensure query and tag are not empty
                 if !query.isEmpty && !tag.isEmpty {
+                    self.model.saveQuery(
+                        query, forTag: tag, syncToCloud: true)
                     
-                    self.model.saveQuery(query, forTag: tag, syncToCloud: true)
+                    if isNew {
+                        let indexPath =
+                        NSIndexPath(forRow: 0, inSection: 0)
+                        self.tableView.insertRowsAtIndexPaths([indexPath],
+                            withRowAnimation: .Automatic)
+                    }
                 }
-                
-                if isNew {
-                    
-                    let indexPath = NSIndexPath(forRow: 0, inSection: 0)
-                    self.tableView.insertRowsAtIndexPaths([indexPath], withRowAnimation: .Automatic)
-                }
-                
         })
         alertController.addAction(saveAction)
         
-        presentViewController(alertController, animated: true, completion: nil)
+        presentViewController(alertController, animated: true,
+            completion: nil)
     }
     
     // displays share sheet
@@ -161,20 +160,21 @@ class MasterViewController: UITableViewController,
         // Dispose of any resources that can be recreated.
     }
 
-    func insertNewObject(sender: AnyObject) {
-        objects.insertObject(NSDate(), atIndex: 0)
-        let indexPath = NSIndexPath(forRow: 0, inSection: 0)
-        self.tableView.insertRowsAtIndexPaths([indexPath], withRowAnimation: .Automatic)
-    }
-
     // MARK: - Segues
 
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        
         if segue.identifier == "showDetail" {
+            
             if let indexPath = self.tableView.indexPathForSelectedRow() {
-                let object = objects[indexPath.row] as NSDate
+                
                 let controller = (segue.destinationViewController as UINavigationController).topViewController as DetailViewController
-                controller.detailItem = object
+                
+                // get query string
+                let query = String(model.queryForTagAtIndex(indexPath.row)!)
+                
+                // create NSURL to perform twitter search
+                controller.detailItem = NSURL(string: twitterSearchURL + urlEncodeString(query))
                 controller.navigationItem.leftBarButtonItem = self.splitViewController?.displayModeButtonItem()
                 controller.navigationItem.leftItemsSupplementBackButton = true
             }
@@ -188,14 +188,18 @@ class MasterViewController: UITableViewController,
     }
 
     override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return objects.count
+        return model.count
     }
 
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath) as UITableViewCell
-
-        let object = objects[indexPath.row] as NSDate
-        cell.textLabel!.text = object.description
+        cell.textLabel!.text = model.tagAtIndex(indexPath.row)
+        
+        // long press gesture recognizer
+        let longPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: "tableViewCellLongPressed:")
+        longPressGestureRecognizer.minimumPressDuration = 0.5
+        cell.addGestureRecognizer(longPressGestureRecognizer)
+        
         return cell
     }
 
@@ -206,13 +210,24 @@ class MasterViewController: UITableViewController,
 
     override func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath) {
         if editingStyle == .Delete {
-            objects.removeObjectAtIndex(indexPath.row)
+            model.deleteSearchAtIndex(indexPath.row)
+            
+            // remove UITableView row
             tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
-        } else if editingStyle == .Insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
+
         }
+        //else if editingStyle == .Insert {
+            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
+        //}
     }
-
-
+    
+    override func tableView(tableView: UITableView, canMoveRowAtIndexPath indexPath: NSIndexPath) -> Bool {
+        return true;
+    }
+    
+    override func tableView(tableView: UITableView, moveRowAtIndexPath sourceIndexPath: NSIndexPath, toIndexPath destinationIndexPath: NSIndexPath) {
+        // tell model to reorder tags
+        model.moveTagAtIndex(sourceIndexPath.row, toDestinationIndex: destinationIndexPath.row)
+    }
 }
 
