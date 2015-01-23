@@ -86,7 +86,7 @@ class MasterViewController: UITableViewController,
         
         // create UITextFields in which user can enter a new search
         alertController.addTextFieldWithConfigurationHandler(
-            {(textField) in
+            {(textField) -> Void in
                 if isNew {
                     textField.placeholder = "Enter Twitter search query"
                 } else {
