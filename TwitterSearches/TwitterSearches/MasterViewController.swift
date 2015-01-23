@@ -43,6 +43,7 @@ class MasterViewController: UITableViewController,
     
     // display UIAlertController to get new search from user
     func addButtonPressed(sender: AnyObject) {
+        if tableView.editing {return}
         displayAddEditSearchAlert(isNew: true, index: nil)
     }
     
